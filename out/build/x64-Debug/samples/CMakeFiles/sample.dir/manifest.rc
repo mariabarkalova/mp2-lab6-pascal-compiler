@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/диск Е/Прога/Лабы 4 семестр/ab6-pascal-compiler/out/build/x64-Debug/samples/CMakeFiles/sample.dir/embed.manifest"

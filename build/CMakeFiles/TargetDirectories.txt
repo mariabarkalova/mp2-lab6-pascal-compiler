@@ -1,0 +1,5 @@
+D:/диск Е/Прога/Лабы 4 семестр/ab6-pascal-compiler/build/CMakeFiles/ALL_BUILD.dir
+D:/диск Е/Прога/Лабы 4 семестр/ab6-pascal-compiler/build/CMakeFiles/ZERO_CHECK.dir
+D:/диск Е/Прога/Лабы 4 семестр/ab6-pascal-compiler/build/gtest/CMakeFiles/gtest.dir
+D:/диск Е/Прога/Лабы 4 семестр/ab6-pascal-compiler/build/test/CMakeFiles/tests.dir
+D:/диск Е/Прога/Лабы 4 семестр/ab6-pascal-compiler/build/samples/CMakeFiles/sample.dir

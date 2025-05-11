@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\диск Е\Прога\Лабы 4 семестр\ab6-pascal-compiler\gtest\gtest-all.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\диск Е\Прога\Лабы 4 семестр\ab6-pascal-compiler\gtest\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{73D52995-49D1-3764-9607-8190CDF4833E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
