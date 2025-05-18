@@ -1,6 +1,7 @@
 #include "hierarchicalList.h"
 #include "arithmetic.h"
 #include <vector>
+/*
 int main() {
     setlocale(LC_ALL, "Russian");
     vector<string> program = {
@@ -54,4 +55,19 @@ int main() {
     }
 
     return 0;
+}*/
+
+int main()
+{
+    setlocale(LC_ALL, "Russian");
+    HierarchicalList list;
+    HierarchicalList::hl_iterator it = list.begin();
+
+    it = list.insert_next(it); //Первый элемент
+    (*it) = "Первый элемент";
+
+    HierarchicalList::hl_iterator it2 = list.insert_down(it); //Второй элемент
+    (*it2) = "Второй элемент";
+
+    cout << list << endl;
 }

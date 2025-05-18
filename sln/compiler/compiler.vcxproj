@@ -123,7 +123,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\arithmetic.h" />
     <ClInclude Include="..\..\include\hierarchicalList.h" />
+    <ClInclude Include="..\..\include\stack.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\hierarchicalList.cpp" />
