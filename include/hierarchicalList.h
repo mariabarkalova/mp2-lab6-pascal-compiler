@@ -2,6 +2,7 @@
 #include<iostream>
 #include<string>
 #include<vector>
+#include <memory>
 
 #ifndef HIERARCHICAL_LIST_H
 #define HIERARCHICAL_LIST_H
@@ -54,7 +55,7 @@ class HierarchicalList
 {
 private:
     struct Node {
-        std::string data;
+        string data; //[хранит данные узла
         Node* next;
         Node* down;
         Node(std::string x) : data(x), next(nullptr), down(nullptr) {}
@@ -66,19 +67,6 @@ private:
 
 public:
     class hl_iterator;
-    /*
-    HierarchicalList();
-    ~HierarchicalList();
-
-    //void Load(std::string path);
-    friend std::ostream& operator<<(std::ostream& os, const HierarchicalList& l);
-
-    hl_iterator begin();
-    hl_iterator end();
-
-    hl_iterator insert_next(hl_iterator& it);
-    hl_iterator insert_down(hl_iterator& it);
-    */
     
     HierarchicalList() : root(nullptr) {}
 
@@ -86,7 +74,7 @@ public:
     {
     }
 
-    friend ostream& operator<<(ostream& os, HierarchicalList& l) // печать с выделением уровней (печатать отступы или |)
+    friend ostream& operator<<(ostream& os, HierarchicalList& l)
     {
         hl_iterator it = l.begin();
         while (it != l.end())
@@ -97,29 +85,23 @@ public:
         return os;
     }
 
-
     ~HierarchicalList()
     {
         Node* current = root;
         while (current)
         {
             Node* next = current->next;
-
             Node* down = current->down;
-
-            while (current->down) {
+            while (current->down) { //освобождает все нижние узлы
                 Node* temp = current->down;
                 current->down = temp->next;
                 delete temp;
-
             }
             delete current;
-
             current = next;
             if (root != nullptr) {
                 root = root->next;
             }
-
         }
     }
 
@@ -129,7 +111,6 @@ public:
     hl_iterator insert_next(hl_iterator& it); // подумать над интерфейсом. Смысл: вставить следующее звено после it. Возвращает итератор на новое звено
 
     hl_iterator insert_down(hl_iterator& it); // подумать над интерфейсом. Сысл: вставить звено it->down. Возвращает итератор на новое звено 
-    
 
 
 
@@ -157,36 +138,6 @@ public:
 
         ~hl_iterator() {}
         */
-        //иза моей старой программы
-        /*
-        hl_iterator(Node* startNode = nullptr);
-        hl_iterator(const hl_iterator& it);
-
-        hl_iterator& operator=(const hl_iterator& i);
-
-        hl_iterator& operator++();
-        hl_iterator& operator++(int);
-        bool is_last() const;
-        string& operator*();
-        string* operator->();
-        bool operator==(const hl_iterator& it2);
-        bool operator!=(const hl_iterator& it2);
-        */
-        /*
-        hl_iterator(Node* startNode = nullptr);
-        hl_iterator(const HierarchicalList::hl_iterator& it);
-        hl_iterator& operator=(const HierarchicalList::hl_iterator& i);
-
-        hl_iterator& operator++();
-        hl_iterator& operator++(int);
-        bool is_last() const;
-        std::string& operator*();
-        std::string* operator->();
-        bool operator==(const hl_iterator& it2);
-        bool operator!=(const hl_iterator& it2);
-
-        ~hl_iterator();
-        */
         
         hl_iterator(Node* startNode = nullptr) : current(startNode)
         {
@@ -195,7 +146,7 @@ public:
                 stack.Push(startNode);
             }
         }
-        hl_iterator(const HierarchicalList::hl_iterator& it) : current(it.current), stack(it.stack) {}
+        hl_iterator(const HierarchicalList::hl_iterator& it) : current(it.current), stack(it.stack) {} 
 
         hl_iterator& operator=(const hl_iterator& i) {
             if (this != &i) {
@@ -204,21 +155,18 @@ public:
             }
             return *this;
         }
-
+        
         hl_iterator& operator++()
         {
             if (current == nullptr)
                 return *this;
-
-            //Move to down level if exists
-            if (current->down)
+            if (current->down) //переход на уровень ниже если существует
             {
                 stack.Push(current->down);
                 current = current->down;
                 return *this;
             }
-
-            //If not, move to next right, while not find
+            //если нет, то переход к след справа, пока не найдем
             while (true)
             {
                 if (current->next)
@@ -228,8 +176,7 @@ public:
                 }
                 else
                 {
-                    // If we here, it means that we don't have next. We need to go up.
-                    // We can only go up when we don't have down.
+                    //у нас нет следующего мы идем вверх
                     if (!stack.IsEmpty())
                     {
                         current = stack.Peek();
@@ -244,7 +191,9 @@ public:
             }
             return *this;
         }
-        hl_iterator& operator++(int)
+
+
+        hl_iterator& operator++(int) 
         {
             hl_iterator temp = *this;
             ++(*this);
@@ -255,13 +204,11 @@ public:
 
         std::string& operator*() { return current->data; }
         std::string* operator->() { return &(current->data); }
-        bool operator==(const hl_iterator& it2) { return current == it2.current; }
-        bool operator!=(const hl_iterator& it2) { return !(*this == it2); }
 
+        bool operator==(const hl_iterator& other) const { return current == other.current; }
+        bool operator!=(const hl_iterator& other) const { return current != other.current; }
         ~hl_iterator() {}
-        
     };
-
 };
 #endif
 
@@ -274,12 +221,10 @@ HierarchicalList::hl_iterator HierarchicalList::insert_next(HierarchicalList::hl
         root = newNode;
         return hl_iterator(root);
     }
-
     if (it.current == nullptr)
     {
         return end();
     }
-
     newNode->next = it.current->next;
     it.current->next = newNode;
     return hl_iterator(newNode);
@@ -291,7 +236,6 @@ HierarchicalList::hl_iterator HierarchicalList::insert_down(HierarchicalList::hl
     {
         return end();
     }
-
     Node* newNode = new Node();
     newNode->down = it.current->down;
     it.current->down = newNode;
