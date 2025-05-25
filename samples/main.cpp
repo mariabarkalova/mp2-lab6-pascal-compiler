@@ -75,15 +75,19 @@ int main()
     cout << endl << endl;
 
     list.Print();
-
     cout << endl << endl;
 
     HierarchicalList program;
     program.Read("ProgramPas.txt");
 
     program.Print();
-
     cout << endl << endl;
 
     cout << program << endl;
+    cout << endl << endl;
+
+    HierarchicalList program1;
+    program1.Read("ProgramPas2.txt");
+
+    program1.Print();
 }

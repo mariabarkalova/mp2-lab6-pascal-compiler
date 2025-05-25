@@ -247,7 +247,7 @@ HierarchicalList::Node* HierarchicalList::ReadRec(ifstream& File)
     while (File.eof() == 0)
     {
         getline(File, StrBuf);
-        if (StrBuf == "end;" || StrBuf == "end.")
+        if (StrBuf == "end;" || StrBuf == "end."|| StrBuf == "end")
         { 
             level--; 
             break; 
