@@ -1,21 +1,20 @@
 program Example;
-var num1, num2: integer; Res, d: double;
+var
+num1, num2: integer;
+Res, d: double;
 begin
 num1:= 5;
 num2:= 5;
 Res := 0.0;
 d := 0.0;
-writeln('Введите четное целое число: ');
+writeln('Enter an even integer: ');
 readln(num2);
-writeln('Введите вещественное число: ');
-readln(d);
-if (num2 mod 2 = 0) then 
-begin
-Res := (num1 - num2 * 5 div 2) / (d * 2);
-writeln('Результат = ', Res);
-end
-else
-begin
-writeln('Неверный ввод');
+writeln('Enter a real number: ');
+readln(d); 
+if (num2 mod 2 = 0) then begin
+Res := (num1 - num2 * 5 div 2) 
+writeln('Result = ', Res);
 end;
+else
+writeln('incorrect input');
 end.

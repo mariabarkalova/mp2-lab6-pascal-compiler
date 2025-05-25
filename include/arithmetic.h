@@ -8,16 +8,14 @@
 #include <cctype>
 #include "stack.h"
 #include < set >
-
+#include "hierarchicalList.h"
 using namespace std;
 
 class PascalLineByLine {
-    vector<string> programLines;
-    size_t currentLine = 0;
+    HierarchicalList::hl_iterator current;
     bool inBeginBlock = false;
-
     map<string, double> variables;
-    map<string, bool> varTypes; // true - real, false - integer
+    map<string, bool> varTypes;
 
     // Приоритеты операторов
     const map<string, int> opPriority = {
@@ -27,93 +25,88 @@ class PascalLineByLine {
     };
 
 public:
-    PascalLineByLine(const vector<string>& program) : programLines(program) {}
+    PascalLineByLine(HierarchicalList& program) : current(program.begin()) {}
 
     void run() {
-        while (currentLine < programLines.size()) {
-            processLine(programLines[currentLine]);
-            currentLine++;
-        }
+        processBlock(current);
     }
 
-private:
-    void processLine(string line) {
 
-        // Удаляем лишние пробелы
-        line = delSpaces(line);
+private:
+    void processNode(HierarchicalList::hl_iterator& node) {
+        string line = trim(*node);
         if (line.empty()) return;
 
-        // Обработка разных типов строк
-        if (line.find("var") == 0) {
-            processVarDeclaration(line);
+        if (line.find("program ") == 0 || line == "var") {
+            return;
         }
         else if (line == "begin") {
             inBeginBlock = true;
+            if (node.current->down) {
+                HierarchicalList::hl_iterator blockIt(node.current->down);
+                processBlock(blockIt);
+            }
         }
-        else if (line == "end" || line == "end.") {
+        else if (line == "end;" || line == "end.") {
             inBeginBlock = false;
         }
-        else if (inBeginBlock) {
-            processStatement(line);
+    }
+    void processBlock(HierarchicalList::hl_iterator blockIt) {
+        while (blockIt != HierarchicalList::hl_iterator(nullptr)) {
+            string line = trim(*blockIt);
+            if (!line.empty()) {
+                if (line == "begin") {
+                    ++blockIt;
+                    continue;
+                }
+                else if (line == "end;" || line == "end.") {
+                    ++blockIt;
+                    break;
+                }
+                else {
+                    processStatement(blockIt);
+                }
+            }
+            ++blockIt;
         }
     }
+    void processVarDeclaration(HierarchicalList::hl_iterator& varNode) {
+        HierarchicalList::Node* declNode = varNode.current->down;
+        while (declNode != nullptr) {
+            string decl = trim(declNode->data);
+            processSingleVarDeclaration(decl);
+            declNode = declNode->next;
+        }
+    }
+    void processSingleVarDeclaration(const string& decl) {
+        size_t colonPos = decl.find(':');
+        if (colonPos == string::npos) return;
 
-    void processVarDeclaration(const string& line) {
-        // Удаляем "var" в начале строки
-        string content = line.substr(3);
-        content = delSpaces(content);
+        string varsPart = trim(decl.substr(0, colonPos));
+        string type = trim(decl.substr(colonPos + 1));
 
-        // Разбиваем на отдельные объявления по точкам с запятой
-        vector<string> declarations;
+        vector<string> varNames;
         size_t start = 0;
-        size_t end = content.find(';');
+        size_t end = varsPart.find(',');
 
         while (end != string::npos) {
-            declarations.push_back(delSpaces(content.substr(start, end - start)));
+            string varName = trim(varsPart.substr(start, end - start));
+            if (!varName.empty()) varNames.push_back(varName);
             start = end + 1;
-            end = content.find(';', start);
+            end = varsPart.find(',', start);
         }
+        string lastName = trim(varsPart.substr(start));
+        if (!lastName.empty()) varNames.push_back(lastName);
 
-        // Обрабатываем каждое объявление
-        for (const auto& decl : declarations) {
-            size_t colonPos = decl.find(':');
-            if (colonPos == string::npos) continue;
-
-            // Получаем часть с переменными
-            string varsPart = delSpaces(decl.substr(0, colonPos));
-            // Получаем тип
-            string type = delSpaces(decl.substr(colonPos + 1));
-
-            // Разбиваем переменные по запятым
-            vector<string> varNames;
-            size_t varStart = 0;
-            size_t varEnd = varsPart.find(',');
-
-            while (varEnd != string::npos) {
-                string varName = delSpaces(varsPart.substr(varStart, varEnd - varStart));
-                if (!varName.empty()) {
-                    varNames.push_back(varName);
-                }
-                varStart = varEnd + 1;
-                varEnd = varsPart.find(',', varStart);
-            }
-            // Добавляем последнюю переменную
-            string lastName = delSpaces(varsPart.substr(varStart));
-            if (!lastName.empty()) {
-                varNames.push_back(lastName);
-            }
-
-            // Определяем тип (real/integer)
-            bool isReal = (type == "real" || type == "double");
-
-            // Добавляем переменные в хранилище
-            for (const auto& var : varNames) {
-                variables[var] = 0.0;       
-                varTypes[var] = isReal;     
-            }
+        bool isReal = (type == "real" || type == "double");
+        for (const auto& var : varNames) {
+            variables[var] = 0.0;
+            varTypes[var] = isReal;
         }
     }
-    void processStatement(const string& stmt) {
+    void processStatement(HierarchicalList::hl_iterator& stmtIt) {
+        string stmt = trim(*stmtIt);
+
         if (stmt.find("writeln") == 0) {
             processWriteln(stmt);
         }
@@ -121,7 +114,7 @@ private:
             processReadln(stmt);
         }
         else if (stmt.find("if") == 0) {
-            processIf(stmt);
+            processIf(stmtIt);
         }
         else if (stmt.find(":=") != string::npos) {
             processAssignment(stmt);
@@ -181,158 +174,87 @@ private:
         }
     }
 
-    void processIf(const string& stmt) {
-        size_t thenPos = stmt.find("then");
+    void processIf(HierarchicalList::hl_iterator& ifNode) {
+        // Извлекаем полную строку if
+        string ifStmt = *ifNode;
+
+        // Находим позицию "then"
+        size_t thenPos = ifStmt.find("then");
         if (thenPos == string::npos) return;
-        size_t endPos;
-        size_t onelsePos;
-        size_t offelsePos = 0;
+
         // Извлекаем условие
-        string cond = delSpaces(stmt.substr(2, thenPos - 2));
-        bool conditionResult = evaluateCondition(cond);
+        string condition = trim(ifStmt.substr(2, thenPos - 2)); // 2 = пропускаем if
+        bool conditionResult = evaluateCondition(condition);
 
         // Обрабатываем then-часть
-        string thenPart = delSpaces(stmt.substr(thenPos + 4));
-
         if (conditionResult) {
-            // Обработка then-блока
-            if (thenPart.find("begin") == 0) {
-                currentLine++; // Переходим на строку после begin
-                while (currentLine < programLines.size() &&
-                    delSpaces(programLines[currentLine]) != "end") {
-                    processLine(programLines[currentLine]);
-                    currentLine++;
-                }
-               
-                if ((currentLine < programLines.size()) && delSpaces(programLines[currentLine]) != "end")
-                {
-                    endPos = currentLine;   
-                }
+            // Проверяем есть ли блок then (down-узел)
+            if (ifNode.current->down) {
+                HierarchicalList::hl_iterator thenIt(ifNode.current->down);
+                // processBlock(thenIt);
             }
             else {
-                processStatement(thenPart);
-                endPos = currentLine;
+                // Иначе then-часть - это одиночная строка после then
+                string thenPart = trim(ifStmt.substr(thenPos + 4));
+                if (!thenPart.empty()) {
+                    // Создаем временный узел для одиночной строки
+                    HierarchicalList::Node tempNode(thenPart);
+                    HierarchicalList::hl_iterator tempIt(&tempNode);
+                    processStatement(tempIt); ++ifNode;
+                }
             }
-
         }
         else {
-            // Поиск else только в пределах текущего блока
-            size_t originalLine = currentLine;
-            bool elseFound = false;
+            // Ищем else-часть
+            HierarchicalList::hl_iterator elseIt = ifNode;
+            ++elseIt; // Переходим к следующему узлу
 
-            // Ищем else после then-части
-            for (size_t i = currentLine + 1; i < programLines.size(); i++) {
-                string line = delSpaces(programLines[i]);
-
-                // Проверяем на наличие else
+            // Ищем узел с else
+            while (elseIt != HierarchicalList::hl_iterator(nullptr)) {
+                string line = *elseIt;
                 if (line.find("else") == 0) {
-                    elseFound = true;
-                    onelsePos = i;
-                    currentLine = i;
-                    string elsePart;
-                    if(line.size() != 4)
-                    elsePart = delSpaces(line.substr(4));
-                    else {
-                        i++;
-                       
-                        elsePart = delSpaces(programLines[i]);
-                    }
+                    // Нашли else
+                    string elseContent = trim(line.substr(4));
 
-                    // Обработка else-блока
-                    if (elsePart.find("begin") == 0) {
-                        currentLine++;
-                        while (currentLine < programLines.size() &&
-                            delSpaces(programLines[currentLine]) != "end") {
-                            processLine(programLines[currentLine]);
-                            currentLine++;
-                        }
-                      
-                        if ((currentLine < programLines.size()) && delSpaces(programLines[currentLine]) != "end")
-                            offelsePos = currentLine;
+                    // Проверяем есть ли блок else (down-узел)
+                    if (elseIt.current->down) {
+                        // Если есть down-узел - это блок else
+                        HierarchicalList::hl_iterator elseBlockIt(elseIt.current->down);
+                        processBlock(elseBlockIt);
                     }
-                    else {
-                        processStatement(elsePart);
-                        offelsePos = currentLine;
+                    else if (!elseContent.empty()) {
+                        // Создаем временный узел для одиночной строки
+                        HierarchicalList::Node tempNode(elseContent);
+                        HierarchicalList::hl_iterator tempIt(&tempNode);
+                        processStatement(tempIt);
                     }
                     break;
                 }
+                ++elseIt;
             }
-                if (!elseFound) {
-                  currentLine = endPos +1;
-                }
+            while (ifNode != HierarchicalList::hl_iterator(nullptr) &&
+                ifNode.current->data != "end;" &&
+                ifNode.current->data != "else") {
+                ++ifNode;
             }
-        if ((offelsePos == 0))
-        {
-            bool elseFound = false;
-            for (size_t i = currentLine + 1; i < programLines.size(); i++) {
-                string line = delSpaces(programLines[i]);
-                
-                // Проверяем на наличие else
-                if (line.find("else") == 0) {
-                    onelsePos = i;
-                    elseFound = true;
-                    currentLine = i;
-                    string elsePart;
-                    if (line.size() != 4)
-                        elsePart = delSpaces(line.substr(4));
-                    else {
-                        i++;
-
-                        elsePart = delSpaces(programLines[i]);
-                    }
-                    // Обработка else-блока
-                    if (elsePart.find("begin") == 0) {
-                        currentLine++;
-                        while (currentLine < programLines.size() &&
-                            delSpaces(programLines[currentLine]) != "end") {
-                            currentLine++;
-                        }
-
-                        if ((currentLine < programLines.size()) && delSpaces(programLines[currentLine]) != "end")
-                            offelsePos = currentLine;
-                    }
-                    else {
-                        offelsePos = currentLine;
-                    }
-                    break;
-                }
-                
-            }
-            if (!elseFound) {
-                currentLine = endPos + 1;
-            }
-            else
-            currentLine = offelsePos + 1;
         }
-        else currentLine = offelsePos + 1;
-                
+
     }
 
     void processAssignment(const string& stmt) {
         size_t assignPos = stmt.find(":=");
         if (assignPos == string::npos) return;
 
-        // Извлекаем имя переменной
         string varName = delSpaces(stmt.substr(0, assignPos));
-
-        // Проверяем, объявлена ли переменная
-        if (variables.find(varName) == variables.end()) {
-            throw runtime_error("Undeclared variable: " + varName);
-        }
-
-        // Извлекаем выражение
         string expr = delSpaces(stmt.substr(assignPos + 2));
         double value = evaluateExpression(expr);
 
-         // Присваиваем с учетом типа
-         if (!varTypes[varName]) {
-             variables[varName] = static_cast<int>(value); // Для integer
-         }
-         else {
-             variables[varName] = value; // Для real/double
-         }
-        
-       
+        if (!varTypes[varName]) {
+            variables[varName] = static_cast<int>(value); // integer
+        }
+        else {
+            variables[varName] = value; //real/double
+        }
     }
 
     double evaluateExpression(const string& expr) {
@@ -342,7 +264,7 @@ private:
     }
 
     bool evaluateCondition(const string& cond) {
-        
+
         vector<string> lexems = parseLexems(cond);
         vector<string> postfix = infixToPostfix(lexems);
         double result = evaluatePostfix(postfix);
@@ -556,7 +478,7 @@ private:
                     stack.Push(a / b);
                 }
                 else if (lexem == "and") {
-               
+
                     stack.Push(a && b);
                 }
                 else if (lexem == "=") {
@@ -564,23 +486,23 @@ private:
                     stack.Push(a == b);
                 }
                 else if (lexem == "<") {
-                   
+
                     stack.Push(a < b);
                 }
                 else if (lexem == ">") {
-                    
+
                     stack.Push(a > b);
                 }
                 else if (lexem == "<=") {
-                   
+
                     stack.Push(a <= b);
                 }
                 else if (lexem == ">=") {
-                    
+
                     stack.Push(a >= b);
                 }
                 else if (lexem == "or") {
-                   
+
                     stack.Push(a || b);
                 }
                 else if (lexem == "div") {

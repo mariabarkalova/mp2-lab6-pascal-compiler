@@ -52,13 +52,15 @@ public:
     }
 };
 
+
 class HierarchicalList
 {
-private:
+public:
     struct Node {
         string data; //[хранит данные узла
         Node* next;
         Node* down;
+        bool executed = false;
         Node(std::string x) : data(x), next(nullptr), down(nullptr) {}
         Node() : data(""), next(nullptr), down(nullptr) {} // Конструктор по умолчанию
     };
@@ -68,9 +70,9 @@ private:
 
 public:
     class hl_iterator;
-    
-    HierarchicalList() : root(nullptr) {}
 
+    HierarchicalList() : root(nullptr) {}
+    Node* GetRoot() const { return root; }
     friend ostream& operator<<(ostream& os, HierarchicalList& l)
     {
         hl_iterator it = l.begin();
@@ -114,11 +116,10 @@ public:
 
     ////////////////////////////////////////////////////////////////////// 
     class hl_iterator {
+    public:
         TStack<Node*> stack; // здесь ваш стек
         Node* current;
         Node* first;
-
-    public:
         friend class HierarchicalList;
         hl_iterator(Node* startNode = nullptr) : current(startNode)
         {
@@ -131,7 +132,7 @@ public:
 
             }
         }
-        hl_iterator(const HierarchicalList::hl_iterator& it) : current(it.current), stack(it.stack) {} 
+        hl_iterator(const HierarchicalList::hl_iterator& it) : current(it.current), stack(it.stack) {}
 
         hl_iterator& operator=(const hl_iterator& i) {
             if (this != &i) {
@@ -140,7 +141,7 @@ public:
             }
             return *this;
         }
-        
+
         hl_iterator& operator++()
         {
             if (stack.IsEmpty() || current == nullptr)
@@ -148,8 +149,8 @@ public:
                 current = nullptr;
                 return *this;
             }
-               
-            current = stack.Peek(); stack.Pop();  
+
+            current = stack.Peek(); stack.Pop();
             if (current != first)
             {   // первая строка текста уже была обработана 
                 if (current->next != nullptr) stack.Push(current->next);
@@ -159,7 +160,7 @@ public:
             return *this;
         }
 
-        hl_iterator& operator++(int) 
+        hl_iterator& operator++(int)
         {
             hl_iterator temp = *this;
             ++(*this);
@@ -176,9 +177,9 @@ public:
         ~hl_iterator() {}
     };
 private:
-    void PrintRec(Node *p);
+    void PrintRec(Node* p);
     int level;
-    Node* ReadRec(ifstream& File);
+    Node* ReadRec(ifstream& File, TStack<Node*>& blockStack);
 };
 #endif
 
@@ -218,7 +219,7 @@ void HierarchicalList::PrintRec(Node* p)
 {
     if (p)
     {
-        for (int i = 0;i < level;i++)
+        for (int i = 0; i < level; i++)
             cout << "    ";
         cout << p->data << endl;
         level++;
@@ -232,41 +233,179 @@ void HierarchicalList::PrintRec(Node* p)
 void HierarchicalList::Read(string FileName)
 {
     ifstream file(FileName);
+    TStack<Node*> st;
     if (file)
     {
         level = 0;
-        root = ReadRec(file);
+        root = ReadRec(file, st);
     }
 }
+std::string trim(const std::string& s) {
+    if (s.empty()) return s;
 
-HierarchicalList::Node* HierarchicalList::ReadRec(ifstream& File)
-{
-    Node* pHead, * ptl;
-    pHead = ptl = nullptr;
+    auto start = s.begin();
+    while (start != s.end() && std::isspace(*start)) {
+        ++start;
+    }
+
+    if (start == s.end()) {
+        return ""; // Строка состоит только из пробелов
+    }
+
+    auto end = s.end();
+    do {
+        --end;
+    } while (end != start && std::isspace(*end));
+
+    return std::string(start, end + 1);
+}
+
+HierarchicalList::Node* HierarchicalList::ReadRec(ifstream& File, TStack<Node*>& blockStack) {
+    Node* pHead = nullptr;
+    Node* ptl = nullptr;
     string StrBuf;
-    while (File.eof() == 0)
-    {
+
+    while (!File.eof()) {
         getline(File, StrBuf);
-        if (StrBuf == "end;" || StrBuf == "end."|| StrBuf == "end")
-        { 
-            level--; 
-            break; 
+        StrBuf = trim(StrBuf);
+        if (StrBuf.empty()) continue;
+
+        // Обработка program
+        if (StrBuf.find("program") == 0) {
+            pHead = ptl = new Node(StrBuf);
+            continue;
         }
-        else if (StrBuf == "begin")
-        { //рекурсия
-            level++;
-            ptl->down = ReadRec(File);
-        }
-        else { // присоединение следующей строки
-            if (pHead == NULL)
-            {
-                pHead = ptl = new Node(StrBuf);
-            }
-            else
-            {
+        // Обработка var
+        if (StrBuf == "var") {
+            if (!pHead) pHead = ptl = new Node(StrBuf);
+            else {
                 ptl->next = new Node(StrBuf);
                 ptl = ptl->next;
             }
+
+            Node* varBlock = nullptr;
+            Node* varTail = nullptr;
+            while (!File.eof()) {
+                streampos pos = File.tellg();
+                getline(File, StrBuf);
+                StrBuf = trim(StrBuf);
+
+                if (StrBuf == "begin") {
+                    File.seekg(pos);
+                    break;
+                }
+
+                if (!StrBuf.empty()) {
+                    if (!varBlock) {
+                        varBlock = varTail = new Node(StrBuf);
+                    }
+                    else {
+                        varTail->next = new Node(StrBuf);
+                        varTail = varTail->next;
+                    }
+                }
+            }
+            ptl->down = varBlock;
+            continue;
+        }
+
+        // Обработка begin
+        if (StrBuf == "begin") {
+            Node* beginNode = new Node(StrBuf);
+            if (!pHead) pHead = beginNode;
+            if (ptl) ptl->next = beginNode;
+            ptl = beginNode;
+
+            // Сохраняем текущий контекст
+            blockStack.Push(ptl);
+
+            // Рекурсивно обрабатываем блок
+            beginNode->down = ReadRec(File, blockStack);
+            continue;
+        }
+
+        // Обработка end
+        if (StrBuf == "end." || StrBuf == "end;") {
+            if (!blockStack.IsEmpty()) {
+                Node* blockStart = blockStack.Pop();
+                // Добавляем end на том же уровне, что и begin
+                blockStart->next = new Node(StrBuf);
+                ptl = blockStart->next;
+            }
+            break;
+        }
+
+        // Обработка if 
+        if (StrBuf.find("if ") == 0) {
+            Node* ifNode = new Node(StrBuf);
+            if (!pHead) pHead = ifNode;
+            if (ptl) ptl->next = ifNode;
+            ptl = ifNode;
+
+            size_t thenPos = StrBuf.find("then");
+            if (thenPos != string::npos) {
+                // Проверяем, есть ли begin на этой же строке
+                string thenPart = trim(StrBuf.substr(thenPos + 4));
+
+                if (thenPart.empty()) {
+                    // Если после then ничего нет, читаем следующую строку
+                    streampos prevPos = File.tellg();
+                    getline(File, StrBuf);
+                    StrBuf = trim(StrBuf);
+
+                    if (StrBuf == "begin") {
+                        // Обрабатываем begin на новой строке
+                        Node* beginNode = new Node("begin");
+                        ifNode->down = beginNode;
+                        Node* savedPtl = ptl;
+                        blockStack.Push(ifNode);
+
+                        beginNode->down = ReadRec(File, blockStack);
+
+                        Node* endNode = new Node("end;");
+                        beginNode->next = endNode;
+
+                        ptl = savedPtl;
+                        if (!blockStack.IsEmpty() && blockStack.Peek() == ifNode) {
+                            blockStack.Pop();
+                        }
+                    }
+                    else {
+                        // Если не begin, возвращаемся назад и обрабатываем как одиночный оператор
+                        File.seekg(prevPos);
+                        ifNode->down = new Node(StrBuf);
+                    }
+                }
+                else if (thenPart == "begin") {
+                    // Обработка begin на той же строке
+                    Node* beginNode = new Node("begin");
+                    ifNode->down = beginNode;
+
+                    Node* savedPtl = ptl;
+                    blockStack.Push(ifNode);
+
+                    beginNode->down = ReadRec(File, blockStack);
+
+                    Node* endNode = new Node("end;");
+                    beginNode->next = endNode;
+
+                    ptl = savedPtl;
+                    if (!blockStack.IsEmpty() && blockStack.Peek() == ifNode) {
+                        blockStack.Pop();
+                    }
+                }
+
+            }
+            continue;
+        }
+        // Обычные операторы
+        Node* newNode = new Node(StrBuf);
+        if (!pHead) {
+            pHead = ptl = newNode;
+        }
+        else {
+            ptl->next = newNode;
+            ptl = newNode;
         }
     }
     return pHead;
