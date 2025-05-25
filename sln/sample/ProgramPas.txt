@@ -1,0 +1,14 @@
+program Test;
+var    a: integer; b: real; c: integer;
+begin
+a := 10;
+b := 3.5;
+c := a div 2;
+writeln('Line by line Pascal--');
+writeln('a = ', a, ', b = ', b);
+writeln('c = a div 2 = ', c);
+if (a > 5) then writeln('a > 5 is true');
+writeln('Enter new a:');
+readln(a);
+writeln('New a = ', a);
+end.

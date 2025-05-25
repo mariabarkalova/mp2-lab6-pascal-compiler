@@ -43,6 +43,7 @@ int main() {
       "    writeln('New a = ', a);",
       "end."
     };
+
     try {
         cout << "Starting Pascal-- program execution..." << endl;
         PascalLineByLine interpreter(program);
@@ -62,12 +63,27 @@ int main()
     setlocale(LC_ALL, "Russian");
     HierarchicalList list;
     HierarchicalList::hl_iterator it = list.begin();
-
-    it = list.insert_next(it); //Первый элемент
-    (*it) = "Первый элемент";
-
-    HierarchicalList::hl_iterator it2 = list.insert_down(it); //Второй элемент
-    (*it2) = "Второй элемент";
-
+    
+    it = list.insert_next(it);
+    (*it) = "Строка 1";
+    HierarchicalList::hl_iterator it1 = list.insert_down(it);
+    (*it1) = "Строка 1.1";
+    it = list.insert_next(it);
+    (*it) = "Строка 2";
     cout << list << endl;
+    
+    cout << endl << endl;
+
+    list.Print();
+
+    cout << endl << endl;
+
+    HierarchicalList program;
+    program.Read("ProgramPas.txt");
+
+    program.Print();
+
+    cout << endl << endl;
+
+    cout << program << endl;
 }
